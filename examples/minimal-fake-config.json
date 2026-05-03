@@ -1,0 +1,51 @@
+{
+    "_comment": [
+        "Minimal end-to-end demo using only stdlib commands.  No real LLM,",
+        "no real validator — just enough to show the loop turning.",
+        "",
+        "  forge-loop init-config does NOT install a working dispatch;",
+        "  this file is the simplest config that actually runs end-to-end",
+        "  on any machine with Python on PATH.",
+        "",
+        "Try it:",
+        "  python -c 'import json; print(json.dumps([{\"title\":\"demo-bug-1\",\"target\":\"foo.py:10\",\"severity\":\"low\"}]))' > /tmp/seed.txt",
+        "  forge-loop run examples/minimal-fake-config.json"
+    ],
+
+    "db_path": "./demo-forge-loop.sqlite",
+
+    "dispatch": {
+        "kind": "shell",
+        "template": "python -c \"import sys; data = sys.stdin.read(); print('FAKE-LLM for edge {eid}: saw', len(data), 'chars of prompt')\"",
+        "timeout": 30,
+        "stdin_prompt": true,
+        "prompt_dir": "./demo-prompts"
+    },
+
+    "verifier": {
+        "kind": "shell",
+        "commands": [
+            "python -c \"print('verifier: green')\""
+        ],
+        "timeout_per_command": 30
+    },
+
+    "sources": [
+        {
+            "kind": "shell",
+            "name": "fake-scanner",
+            "cmd": "python -c \"import json; print(json.dumps([{'title':'demo-bug-1','target':'foo.py:10','severity':'low'},{'title':'demo-bug-2','target':'bar.py:20','severity':'high','cluster_key':'demo'}]))\"",
+            "timeout": 30
+        }
+    ],
+
+    "cooldown_hours": 0,
+    "max_dispatches_per_cycle": 4,
+    "verify_between_dispatches": true,
+
+    "prompt_kwargs": {
+        "project_intro": "You are an autonomous fix agent (this is a forge-loop demo run).",
+        "validation_commands": ["python -c 'print(\"verifier: green\")'"],
+        "hard_constraints": ["This is a demo — no real action expected."]
+    }
+}

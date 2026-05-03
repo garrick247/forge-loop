@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.coverage
+.tox/
+.venv/
+venv/
+env/
+
+# forge-loop runtime artifacts
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+forge-loop-prompts/
+forge-loop-logs/
+*.transcript

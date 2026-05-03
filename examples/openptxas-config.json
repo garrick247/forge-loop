@@ -1,0 +1,87 @@
+{
+    "_comment_about_this_file": [
+        "Real-world forge-loop config used to run an hourly autonomous-fix",
+        "loop on openptxas (a CUDA PTX→SASS compiler) on a Windows machine.",
+        "The pipeline is:",
+        "  1. pre-cycle: SSH to a Linux 'mower' host, snapshot its probe DB",
+        "  2. source[scan-probes]: parse the snapshot, file gpu_incorrect",
+        "                          clusters as edges (deduped against open)",
+        "  3. dispatch: claude --print with a 25-min timeout per session,",
+        "               cluster-rotated, max 4 dispatches per cycle",
+        "  4. verifier: run the project's regression gate (probe-commit)",
+        "  5. post-cycle: re-verify any resolved-pending-verify edges",
+        "Substitute your paths and you have a working autofix loop for any",
+        "compiler that has a SQLite-style bug database."
+    ],
+
+    "db_path": "C:/Users/kraken/_harvest/edges_db",
+
+    "dispatch": {
+        "kind": "claude",
+        "claude_bin": "C:/Users/kraken/.local/bin/claude",
+        "extra_args": "--print",
+        "timeout": 1500,
+        "prompt_dir": "C:/Users/kraken/_harvest/prompts"
+    },
+
+    "verifier": {
+        "kind": "shell",
+        "commands": [
+            "PYTHONIOENCODING=utf-8 PYTHONPATH='C:/Users/kraken/openptxas;C:/Users/kraken/forge-workbench' python C:/Users/kraken/_harvest/verify_open_edges.py"
+        ],
+        "timeout_per_command": 600
+    },
+
+    "sources": [
+        {
+            "kind": "shell",
+            "name": "scan-probes",
+            "cmd": "bash C:/Users/kraken/_harvest/scan_probes_to_json.sh",
+            "timeout": 300,
+            "dedup_by": ["title", "target"]
+        }
+    ],
+
+    "pre_cycle": [
+        "bash C:/Users/kraken/_harvest/pull_greendragon_db.sh"
+    ],
+
+    "post_cycle": [
+        "PYTHONIOENCODING=utf-8 PYTHONPATH='C:/Users/kraken/openptxas;C:/Users/kraken/forge-workbench' python C:/Users/kraken/_harvest/promote_pending_verify.py"
+    ],
+
+    "cooldown_hours": 24,
+    "max_dispatches_per_cycle": 4,
+    "verify_between_dispatches": true,
+
+    "pre_cycle_timeout": 300,
+    "post_cycle_timeout": 600,
+
+    "prompt_kwargs": {
+        "project_intro": "You are fixing a bug in openptxas, a CUDA PTX→SASS compiler targeting NVIDIA SM_120 (Blackwell, RTX 5090).  Your job is to read the bug context, edit the source tree, validate, and commit.",
+        "repo_paths": [
+            "C:/Users/kraken/openptxas",
+            "C:/Users/kraken/forge-workbench"
+        ],
+        "likely_files": [
+            "sass/isel.py — instruction selection (PTX → SASS)",
+            "sass/regalloc.py — register allocation, live-range analysis",
+            "sass/scoreboard.py — wdep/rbar/wbar slot assignment",
+            "sass/pipeline.py — post-isel passes (FG29, FG32, FG56b, etc.)",
+            "sass/encoding/sm_120_opcodes.py — SASS encoder functions",
+            "sass/schedule.py — instruction reordering (LDG latency, hazards)"
+        ],
+        "validation_commands": [
+            "workbench probe-commit --openptxas-repo C:/Users/kraken/openptxas --probe-dir C:/Users/kraken/_harvest/edges_db --resolves {eid} --corpus-gate-dir C:/Users/kraken/forge/analysis/vortex_ntt --message '<short fix description>' --push"
+        ],
+        "hard_constraints": [
+            "DO NOT modify the regression probe, the validation harness, or any test that's expected to pass.",
+            "DO NOT pass --no-test-suite or --skip-tests to probe-commit. The pytest gate is non-negotiable.",
+            "DO NOT bypass the post-commit hook (no --no-verify, no PROBE_RESOLVE_SKIP=1).",
+            "DO NOT amend or rebase prior commits; let probe-commit make a new commit on top.",
+            "DO NOT add narrating comments to the fix code. The commit message carries the explanation.",
+            "Keep the change minimal — surgical fixes age better than refactors."
+        ],
+        "done_criterion": "probe-commit exits 0 and the push lands on main. The post-commit hook will auto-resolve; the live-resolve loop in any running soak detects the HEAD change at its next 250-probe poll and re-verifies."
+    }
+}
