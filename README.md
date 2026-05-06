@@ -29,7 +29,7 @@ that drove a 38-phase openptxas-vs-ptxas differential-compiler session.
 From source:
 
 ```bash
-git clone https://github.com/garrick99/forge-loop
+git clone https://github.com/garrick247/forge-loop
 cd forge-loop
 pip install -e .
 ```
