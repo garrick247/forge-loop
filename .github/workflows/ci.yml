@@ -1,0 +1,21 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: [self-hosted, gpu, cuda]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build venv + install
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install -q --upgrade pip
+          .venv/bin/pip install -q -e .
+          .venv/bin/pip install -q pytest
+      - name: pytest
+        run: .venv/bin/pytest -q tests/
